@@ -1,10 +1,22 @@
 [
   {
     "hash_name": "AK-47 | Elite Build (Field-Tested)",
-    "price": 84
+    "price": 84,
+    "minPrice": 75
   },
   {
     "hash_name": "AK-47 | Elite Build (Well-Worn)",
-    "price": "64.00"
+    "price": "64.00",
+    "minPrice": 65
+  },
+  {
+    "hash_name": "P90 | Teardown (Field-Tested)",
+    "price": 15,
+    "minPrice": 6
+  },
+  {
+    "hash_name": "P90 | Elite Build (Well-Worn)",
+    "price": 14,
+    "minPrice": 6
   }
 ]
