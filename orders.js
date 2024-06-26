@@ -23,6 +23,16 @@ function startOrderProcessing() {
     processOrders();
 }
 
+// Установим тайм-аут для функции processSingleOrder
+async function processSingleOrderWithTimeout(order, prices, balance, timeout = 10000) {
+    return Promise.race([
+        processSingleOrder(order, prices, balance),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Processing order timed out')), timeout)
+        )
+    ]);
+}
+
 async function processOrders() {
     try {
         console.log('Получаем текущие заказы...');
@@ -42,12 +52,14 @@ async function processOrders() {
         const balance = await fetchBalance();
         console.log(`Текущий баланс: ${balance.money} ${balance.currency}`);
 
-        for (const order of orders) {
-            console.log(`Обрабатываем ордер на ${order.hash_name}`);
-            await processSingleOrder(order, prices, balance);
-        }
+        const promises = orders.map(order =>
+            processSingleOrderWithTimeout(order, prices, balance, 10000) // Используем timeout
+                .catch(error => console.error(`Ошибка при обработке ордера на ${order.hash_name}:`, error))
+        );
 
+        await Promise.allSettled(promises);
         console.log('Все ордера обработаны.');
+
     } catch (error) {
         console.error('Ошибка при обработке ордеров:', error);
     }
@@ -68,7 +80,6 @@ async function fetchOrders() {
         return [];
     }
 }
-
 
 async function fetchOrdersFromAPI() {
     try {
@@ -144,6 +155,10 @@ async function processSingleOrder(order, prices, balance) {
                 console.log(`Обновление ордера на ${order.hash_name} по цене ${currentPrice + 0.01}`);
                 // Обновляем ордер с новой ценой
                 await addOrder(order.hash_name, 1, currentPrice + 0.01, balance);
+            } else if (currentPrice > orderPrice) {
+                console.log(`Текущая цена на ${order.hash_name} (${currentPrice}) выше цены ордера (${orderPrice}). Выставляем ордер по цене 1.`);
+                // Выставляем ордер по цене 1
+                await addOrder(order.hash_name, 1, 1, balance);
             } else {
                 console.log(`Текущая цена на ${order.hash_name} (${currentPrice}) не ниже цены ордера (${orderPrice}).`);
             }
@@ -152,6 +167,10 @@ async function processSingleOrder(order, prices, balance) {
                 console.log(`Обновление ордера на ${order.hash_name} по цене ${currentPrice + 0.01}`);
                 // Обновляем ордер с новой ценой
                 await addOrder(order.hash_name, 1, currentPrice + 0.01, balance);
+            } else if (currentPrice > orderPrice) {
+                console.log(`Текущая цена на ${order.hash_name} (${currentPrice}) выше цены ордера (${orderPrice}). Выставляем ордер по цене 1.`);
+                // Выставляем ордер по цене 1
+                await addOrder(order.hash_name, 1, 1, balance);
             } else {
                 console.log(`Текущая цена на ${order.hash_name} (${currentPrice}) не ниже цены ордера (${orderPrice}).`);
             }
@@ -172,7 +191,6 @@ async function addOrder(marketHashName, count, price, balance) {
         console.error(`Недостаточно средств для ордера на ${marketHashName}`);
         return;
     }
-    price += 0.01;
     try {
         const response = await fetch(addOrderUrl, {
             method: 'POST',
@@ -299,4 +317,15 @@ async function handleAddOrderForm() {
 
     form.reset();
     displayOrders();
+}
+
+// Функция для паузы на заданное количество миллисекунд
+function sleep(ms) {
+    return new Promise(resolve => {
+        console.log("Пауза началась на", ms, "мс");
+        setTimeout(() => {
+            console.log("Пауза завершена через", ms, "мс");
+            resolve();
+        }, ms);
+    });
 }

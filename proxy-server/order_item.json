@@ -18,5 +18,41 @@
     "hash_name": "P90 | Elite Build (Well-Worn)",
     "price": 14,
     "minPrice": 6
+  },
+  {
+    "hash_name": "AWP | Capillary (Field-Tested)",
+    "price": 11
+  },
+  {
+    "hash_name": "Tec-9 | Red Quartz (Minimal Wear)",
+    "price": 7.7
+  },
+  {
+    "hash_name": "MAC-10 | Candy Apple (Factory New)",
+    "price": 10
+  },
+  {
+    "hash_name": "Desert Eagle | Bronze Deco (Field-Tested)",
+    "price": 11
+  },
+  {
+    "hash_name": "SSG 08 | Abyss (Well-Worn)",
+    "price": 9
+  },
+  {
+    "hash_name": "USP-S | Forest Leaves (Minimal Wear)",
+    "price": 7.5
+  },
+  {
+    "hash_name": "Glock-18 | Nuclear Garden (Battle-Scarred)",
+    "price": 70
+  },
+  {
+    "hash_name": "AWP | Phobos (Field-Tested)",
+    "price": 70
+  },
+  {
+    "hash_name": "AWP | PAW (Field-Tested)",
+    "price": 90
   }
 ]

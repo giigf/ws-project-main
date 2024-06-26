@@ -25,7 +25,8 @@ function retry(fn, retries = 3, delay = 1000) {
         return fn(...args).catch(err => {
             if (retries > 1) {
                 console.log(`Retrying ${fn.name}, retries left: ${retries - 1}`);
-                return new Promise(res => setTimeout(res, delay)).then(() => retry(fn, retries - 1, delay)(...args));
+                return new Promise(res => setTimeout(res, delay))
+                    .then(() => retry(fn, retries - 1, delay)(...args));
             }
             throw err;
         });
@@ -92,7 +93,6 @@ app.post('/api/save-items', (req, res) => {
     });
 });
 
-// Проксирование запросов к API market.csgo.com
 app.get('/api/get-orders', (req, res) => {
     const page = req.query.page || 0;
     const targetUrl = `https://market.csgo.com/api/v2/get-orders?key=${apiKey}&page=${page}`;
@@ -107,6 +107,11 @@ app.get('/api/get-orders', (req, res) => {
 
 app.post('/api/set-order', (req, res) => {
     const { market_hash_name, count, price, partner, token } = req.body;
+
+    if (!market_hash_name || !count || !price) {
+        return res.status(400).json({ type: 'error', message: 'Missing required parameters' });
+    }
+
     const query = new URLSearchParams({
         key: apiKey,
         market_hash_name,
@@ -115,7 +120,8 @@ app.post('/api/set-order', (req, res) => {
         partner: partner || '',
         token: token || ''
     });
-    const targetUrl = `https://market.csgo.com/api/v2/set-order?${query}`;
+
+    const targetUrl = `https://market.csgo.com/api/v2/set-order?${query.toString()}`;
 
     fetchJson(targetUrl)
         .then(data => res.json(data))
@@ -159,8 +165,6 @@ app.get('/api/orders', (req, res) => {
     });
 });
 
-
-
 app.post('/api/save-orders', (req, res) => {
     const newOrder = req.body;
     const filePath = path.join(__dirname, 'order_item.json');
@@ -189,7 +193,16 @@ app.post('/api/save-orders', (req, res) => {
     });
 });
 
-
+app.get('/api/remove-all-from-sale', (req, res) => {
+    const targetUrl = `https://market.csgo.com/api/v2/remove-all-from-sale?key=${apiKey}`;
+    
+    fetchJson(targetUrl)
+        .then(data => res.json(data))
+        .catch(err => {
+            console.error(`Error removing items from sale: ${err.message}`);
+            res.status(500).json({ type: 'error', message: err.message });
+        });
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
