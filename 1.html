@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список предметов</title>
+    <script src="https://unpkg.com/centrifuge@3.0.0/dist/centrifuge.js"></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">Главная</a>
+        <a href="orders.html">Ордера</a>
+    </header>
+    <h1>Загрузка и сравнение предметов</h1>
+    <input type="file" id="fileInput">
+    <button onclick="processFile()">Загрузить и сравнить</button>
+
+    <div id="item-list">
+        <h2>Список предметов</h2>
+        <pre id="output"></pre>
+    </div>
+
+    <form name="MyForm">
+        <input name="stopwatch" size="10" value="00:00:00.00" disabled>
+    </form>
+    <!-- Подключаем скрипты -->
+
+    <script src="cent.js"></script>
+    <script src="taimer.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

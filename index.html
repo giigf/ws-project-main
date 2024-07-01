@@ -3,44 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Список предметов</title>
-    <script src="https://unpkg.com/centrifuge@3.0.0/dist/centrifuge.js"></script>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
+    <title>Order Processing</title>
+    <link rel="stylesheet" href="styles.css">
+    
 </head>
 <body>
     <header>
-        <a href="index.html">Главная</a>
-        <a href="orders.html">Ордера</a>
+        <nav>
+            <ul>
+                <li><a href="index.html">Order Processing</a></li>
+                <li><a href="add_api.html">Add API</a></li>
+            </ul>
+        </nav>
     </header>
-    <h1>Загрузка и сравнение предметов</h1>
-    <input type="file" id="fileInput">
-    <button onclick="processFile()">Загрузить и сравнить</button>
 
-    <div id="item-list">
-        <h2>Список предметов</h2>
-        <pre id="output"></pre>
+    <div class="container">
+        <div class="content">
+            <h2>Order Processing</h2>
+            <form id="addOrderForm">
+                <div class="form-group">
+                    <label for="hashName">Hash Name:</label>
+                    <input type="text" id="hashName" name="hashName" required>
+                </div>
+                <button type="submit">Add Order</button>
+            </form>
+
+            <div id="balance">Loading balance...</div>
+
+            <table id="ordersTable">
+                <thead>
+                    <tr>
+                        <th>Hash Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Orders will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        <div class="console">
+            <h2>Console</h2>
+            <div id="consoleOutput"></div>
+        </div>
     </div>
 
-    <form name="MyForm">
-        <input name="stopwatch" size="10" value="00:00:00.00" disabled>
-    </form>
-    <!-- Подключаем скрипты -->
-
-    <script src="cent.js"></script>
-    <script src="taimer.js"></script>
-    <script src="script.js"></script>
+    <script src="orders.js"></script>
 </body>
 </html>

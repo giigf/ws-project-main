@@ -46,6 +46,58 @@ const fetchJson = retry((url) => new Promise((resolve, reject) => {
     });
 }), 3, 2000);
 
+const apiDataFile = path.join(__dirname, 'api_data.json');
+let dynamicApis = [];
+
+if (fs.existsSync(apiDataFile)) {
+    const data = fs.readFileSync(apiDataFile, 'utf8');
+    dynamicApis = JSON.parse(data);
+    dynamicApis.forEach(api => addDynamicEndpoint(api.name, api.url));
+}
+
+function addDynamicEndpoint(name, url) {
+    app.get(`/api/${name}`, (req, res) => {
+        const targetUrl = url.replace('<key>', apiKey);
+        fetchJson(targetUrl)
+            .then(data => res.json(data))
+            .catch(err => {
+                console.error(`Error fetching data from ${name}: ${err.message}`);
+                res.status(500).json({ type: 'error', message: err.message });
+            });
+    });
+}
+
+app.post('/api/add', (req, res) => {
+    const { name, url } = req.body;
+
+    if (!name || !url) {
+        return res.status(400).json({ error: 'Имя и URL API обязательны' });
+    }
+
+    if (dynamicApis.find(api => api.name === name)) {
+        return res.status(400).json({ error: 'API с таким именем уже существует' });
+    }
+
+    const newApi = { name, url };
+    dynamicApis.push(newApi);
+    addDynamicEndpoint(name, url);
+
+    fs.writeFileSync(apiDataFile, JSON.stringify(dynamicApis, null, 2));
+    res.json({ message: `API ${name} добавлен`, endpoint: `/api/${name}` });
+});
+
+app.get('/api/list', (req, res) => {
+    const filePath = path.join(__dirname, 'api_data.json');
+
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            console.error(`Error reading orders file: ${err.message}`);
+            return res.status(500).json({ type: 'error', message: 'Error reading orders file' });
+        }
+        res.json(JSON.parse(data));
+    });
+});
+
 app.get('/api/get-ws-token', (req, res) => {
     const targetUrl = `https://market.csgo.com/api/v2/get-ws-token?key=${apiKey}`;
     
@@ -200,6 +252,24 @@ app.get('/api/remove-all-from-sale', (req, res) => {
         .then(data => res.json(data))
         .catch(err => {
             console.error(`Error removing items from sale: ${err.message}`);
+            res.status(500).json({ type: 'error', message: err.message });
+        });
+});
+
+// Новый маршрут для получения информации о предмете
+app.get('/api/get-item-info', (req, res) => {
+    const marketHashName = req.query.market_hash_name;
+
+    if (!marketHashName) {
+        return res.status(400).json({ type: 'error', message: 'Параметр market_hash_name обязателен' });
+    }
+
+    const targetUrl = `https://market.csgo.com/api/v2/get-list-items-info?key=${apiKey}&list_hash_name[]=${encodeURIComponent(marketHashName)}`;
+
+    fetchJson(targetUrl)
+        .then(data => res.json(data))
+        .catch(err => {
+            console.error(`Error fetching item info: ${err.message}`);
             res.status(500).json({ type: 'error', message: err.message });
         });
 });
