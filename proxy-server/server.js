@@ -1,6 +1,6 @@
 const express = require('express');
-const request = require('request');
-const fs = require('fs');
+const axios = require('axios');
+const fs = require('fs').promises;
 const path = require('path');
 const bodyParser = require('body-parser');
 const app = express();
@@ -21,53 +21,54 @@ app.use((req, res, next) => {
 app.use(bodyParser.json());
 
 function retry(fn, retries = 3, delay = 1000) {
-    return (...args) => {
-        return fn(...args).catch(err => {
-            if (retries > 1) {
-                console.log(`Retrying ${fn.name}, retries left: ${retries - 1}`);
-                return new Promise(res => setTimeout(res, delay))
-                    .then(() => retry(fn, retries - 1, delay)(...args));
+    return async (...args) => {
+        while (retries > 0) {
+            try {
+                return await fn(...args);
+            } catch (error) {
+                if (retries > 1) {
+                    console.log(`Retrying ${fn.name}, retries left: ${retries - 1}`);
+                    await new Promise(res => setTimeout(res, delay));
+                }
+                retries--;
             }
-            throw err;
-        });
+        }
+        throw new Error(`Failed after ${retries} retries`);
     };
 }
 
-const fetchJson = retry((url) => new Promise((resolve, reject) => {
-    request(url, (error, response, body) => {
-        if (error || response.statusCode !== 200) {
-            return reject(error || new Error(`Failed with status ${response.statusCode}`));
-        }
-        try {
-            resolve(JSON.parse(body));
-        } catch (e) {
-            reject(e);
-        }
-    });
-}), 3, 2000);
+const fetchJson = retry(async (url) => {
+    const response = await axios.get(url);
+    return response.data;
+}, 3, 2000);
 
 const apiDataFile = path.join(__dirname, 'api_data.json');
 let dynamicApis = [];
 
-if (fs.existsSync(apiDataFile)) {
-    const data = fs.readFileSync(apiDataFile, 'utf8');
-    dynamicApis = JSON.parse(data);
-    dynamicApis.forEach(api => addDynamicEndpoint(api.name, api.url));
+async function loadApis() {
+    try {
+        const data = await fs.readFile(apiDataFile, 'utf8');
+        dynamicApis = JSON.parse(data);
+        dynamicApis.forEach(api => addDynamicEndpoint(api.name, api.url));
+    } catch (error) {
+        console.error(`Error loading API data: ${error.message}`);
+    }
 }
 
 function addDynamicEndpoint(name, url) {
-    app.get(`/api/${name}`, (req, res) => {
+    app.get(`/api/${name}`, async (req, res) => {
         const targetUrl = url.replace('<key>', apiKey);
-        fetchJson(targetUrl)
-            .then(data => res.json(data))
-            .catch(err => {
-                console.error(`Error fetching data from ${name}: ${err.message}`);
-                res.status(500).json({ type: 'error', message: err.message });
-            });
+        try {
+            const data = await fetchJson(targetUrl);
+            res.json(data);
+        } catch (error) {
+            console.error(`Error fetching data from ${name}: ${error.message}`);
+            res.status(500).json({ type: 'error', message: error.message });
+        }
     });
 }
 
-app.post('/api/add', (req, res) => {
+app.post('/api/add', async (req, res) => {
     const { name, url } = req.body;
 
     if (!name || !url) {
@@ -82,90 +83,96 @@ app.post('/api/add', (req, res) => {
     dynamicApis.push(newApi);
     addDynamicEndpoint(name, url);
 
-    fs.writeFileSync(apiDataFile, JSON.stringify(dynamicApis, null, 2));
-    res.json({ message: `API ${name} добавлен`, endpoint: `/api/${name}` });
+    try {
+        await fs.writeFile(apiDataFile, JSON.stringify(dynamicApis, null, 2));
+        res.json({ message: `API ${name} добавлен`, endpoint: `/api/${name}` });
+    } catch (error) {
+        console.error(`Error saving API data: ${error.message}`);
+        res.status(500).json({ type: 'error', message: 'Error saving API data' });
+    }
 });
 
-app.get('/api/list', (req, res) => {
-    const filePath = path.join(__dirname, 'api_data.json');
-
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            console.error(`Error reading orders file: ${err.message}`);
-            return res.status(500).json({ type: 'error', message: 'Error reading orders file' });
-        }
+app.get('/api/list', async (req, res) => {
+    try {
+        const data = await fs.readFile(apiDataFile, 'utf8');
         res.json(JSON.parse(data));
-    });
+    } catch (error) {
+        console.error(`Error reading API list: ${error.message}`);
+        res.status(500).json({ type: 'error', message: 'Error reading API list' });
+    }
 });
 
-app.get('/api/get-ws-token', (req, res) => {
+app.get('/api/get-ws-token', async (req, res) => {
     const targetUrl = `https://market.csgo.com/api/v2/get-ws-token?key=${apiKey}`;
     
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error fetching WebSocket token: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error fetching WebSocket token: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-app.get('/api/dictionary-names', (req, res) => {
+app.get('/api/dictionary-names', async (req, res) => {
     const targetUrl = 'https://market.csgo.com/api/v2/dictionary/names.json';
     
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error fetching dictionary names: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error fetching dictionary names: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-app.get('/api/items', (req, res) => {
+app.get('/api/items', async (req, res) => {
     const filePath = path.join(__dirname, 'items_data.json');
 
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            console.error(`Error reading items file: ${err.message}`);
-            return res.status(500).json({ type: 'error', message: 'Error reading items file' });
-        }
+    try {
+        const data = await fs.readFile(filePath, 'utf8');
         res.json(JSON.parse(data));
-    });
+    } catch (error) {
+        console.error(`Error reading items file: ${error.message}`);
+        res.status(500).json({ type: 'error', message: 'Error reading items file' });
+    }
 });
 
-app.post('/api/save-items', (req, res) => {
+app.post('/api/save-items', async (req, res) => {
     const items = req.body;
     const filePath = path.join(__dirname, 'items_data.json');
 
-    fs.writeFile(filePath, JSON.stringify(items, null, 2), (err) => {
-        if (err) {
-            console.error(`Error saving items file: ${err.message}`);
-            return res.status(500).json({ type: 'error', message: 'Error saving items file' });
-        }
+    try {
+        await fs.writeFile(filePath, JSON.stringify(items, null, 2));
         res.status(200).json({ type: 'success', message: 'File saved successfully' });
-    });
+    } catch (error) {
+        console.error(`Error saving items file: ${error.message}`);
+        res.status(500).json({ type: 'error', message: 'Error saving items file' });
+    }
 });
 
-app.get('/api/get-orders', (req, res) => {
+app.get('/api/get-orders', async (req, res) => {
     const page = req.query.page || 0;
     const targetUrl = `https://market.csgo.com/api/v2/get-orders?key=${apiKey}&page=${page}`;
 
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error fetching orders: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error fetching orders: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-app.post('/api/set-order', (req, res) => {
-    const { market_hash_name, count, price, partner, token } = req.body;
+app.post('/api/set-order', async (req, res) => {
+    const { key ,market_hash_name, count, price, partner, token } = req.body;
 
     if (!market_hash_name || !count || !price) {
         return res.status(400).json({ type: 'error', message: 'Missing required parameters' });
     }
 
     const query = new URLSearchParams({
-        key: apiKey,
+        key,
         market_hash_name,
         count: count.toString(),
         price: price.toString(),
@@ -175,89 +182,81 @@ app.post('/api/set-order', (req, res) => {
 
     const targetUrl = `https://market.csgo.com/api/v2/set-order?${query.toString()}`;
 
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error setting order: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error setting order: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-app.get('/api/prices', (req, res) => {
+app.get('/api/prices', async (req, res) => {
     const targetUrl = 'https://market.csgo.com/api/v2/prices/orders/RUB.json';
 
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error fetching prices: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error fetching prices: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-app.get('/api/get-money', (req, res) => {
+app.get('/api/get-money', async (req, res) => {
     const targetUrl = `https://market.csgo.com/api/v2/get-money?key=${apiKey}`;
 
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error fetching balance: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error fetching balance: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-app.get('/api/orders', (req, res) => {
+app.get('/api/orders', async (req, res) => {
     const filePath = path.join(__dirname, 'order_item.json');
 
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            console.error(`Error reading orders file: ${err.message}`);
-            return res.status(500).json({ type: 'error', message: 'Error reading orders file' });
-        }
+    try {
+        const data = await fs.readFile(filePath, 'utf8');
         res.json(JSON.parse(data));
-    });
+    } catch (error) {
+        console.error(`Error reading orders file: ${error.message}`);
+        res.status(500).json({ type: 'error', message: 'Error reading orders file' });
+    }
 });
 
-app.post('/api/save-orders', (req, res) => {
+app.post('/api/save-orders', async (req, res) => {
     const newOrder = req.body;
     const filePath = path.join(__dirname, 'order_item.json');
 
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            console.error('Ошибка при чтении файла:', err);
-            return res.status(500).json({ success: false, message: 'Ошибка при чтении файла' });
-        }
-
-        let orders = [];
-        if (data) {
-            orders = JSON.parse(data);
-        }
-        
+    try {
+        const data = await fs.readFile(filePath, 'utf8');
+        let orders = JSON.parse(data);
         orders.push(newOrder);
 
-        fs.writeFile(filePath, JSON.stringify(orders, null, 2), 'utf8', (err) => {
-            if (err) {
-                console.error('Ошибка при записи файла:', err);
-                return res.status(500).json({ success: false, message: 'Ошибка при записи файла' });
-            }
-
-            res.json({ success: true, message: 'Ордер успешно сохранен' });
-        });
-    });
+        await fs.writeFile(filePath, JSON.stringify(orders, null, 2));
+        res.json({ success: true, message: 'Ордер успешно сохранен' });
+    } catch (error) {
+        console.error('Ошибка при записи файла:', error);
+        res.status(500).json({ success: false, message: 'Ошибка при записи файла' });
+    }
 });
 
-app.get('/api/remove-all-from-sale', (req, res) => {
+app.get('/api/remove-all-from-sale', async (req, res) => {
     const targetUrl = `https://market.csgo.com/api/v2/remove-all-from-sale?key=${apiKey}`;
     
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error removing items from sale: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error removing items from sale: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
-// Новый маршрут для получения информации о предмете
-app.get('/api/get-item-info', (req, res) => {
+app.get('/api/get-item-info', async (req, res) => {
     const marketHashName = req.query.market_hash_name;
 
     if (!marketHashName) {
@@ -266,14 +265,18 @@ app.get('/api/get-item-info', (req, res) => {
 
     const targetUrl = `https://market.csgo.com/api/v2/get-list-items-info?key=${apiKey}&list_hash_name[]=${encodeURIComponent(marketHashName)}`;
 
-    fetchJson(targetUrl)
-        .then(data => res.json(data))
-        .catch(err => {
-            console.error(`Error fetching item info: ${err.message}`);
-            res.status(500).json({ type: 'error', message: err.message });
-        });
+    try {
+        const data = await fetchJson(targetUrl);
+        res.json(data);
+    } catch (error) {
+        console.error(`Error fetching item info: ${error.message}`);
+        res.status(500).json({ type: 'error', message: error.message });
+    }
 });
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// Load dynamic APIs at startup
+loadApis();
