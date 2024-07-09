@@ -219,6 +219,7 @@ app.get('/api/remove-all-from-sale', (req, res) => {
     handleRequestWithWorker(targetUrl, res);
 });
 
+// Новый маршрут для получения информации о предмете
 app.get('/api/get-item-info', (req, res) => {
     const marketHashName = req.query.market_hash_name;
 
@@ -226,9 +227,10 @@ app.get('/api/get-item-info', (req, res) => {
         return res.status(400).json({ type: 'error', message: 'Параметр market_hash_name обязателен' });
     }
 
-    const targetUrl = `https://market.csgo.com/api/v2/search-item-by-hash-name-specific?key=${req.query.key}&hash_name=${marketHashName}`;
+    const targetUrl = `https://market.csgo.com/api/v2/get-list-items-info?key=${req.query.key}&list_hash_name[]=${encodeURIComponent(marketHashName)}`;
     handleRequestWithWorker(targetUrl, res);
 });
+
 
 app.post('/api/delete-order', async (req, res) => {
     const { hash_name } = req.body;

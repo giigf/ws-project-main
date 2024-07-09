@@ -297,13 +297,13 @@ async function processSingleOrder(order, prices, balance) {
                 logToConsole(`Средняя цена для ${order.hash_name}: ${averagePrice}`);
                 logToConsole(`Цена со скидкой 10%: ${discountedPrice}`);
                 if (discountedPrice === currentPrice) {
-                    logToConsole(`Текущая цена ${discountedPrice} равна цене ордера ${currentPrice} для ${order.hash_name}`);
+                    logToConsole(`Средняя цена ${discountedPrice} равна цене ордера ${currentPrice} для ${order.hash_name}`);
                     await addOrder(order.hash_name, 1, 1, balance);
                 } else if (currentPrice > discountedPrice) {
-                    logToConsole(`Текущая цена на ${order.hash_name} (${currentPrice}) выше цены ордера (${discountedPrice}). Выставляем ордер по цене 1.`);
+                    logToConsole(`Текущая цена на ${order.hash_name} (${currentPrice}) выше средней цены (${discountedPrice}). Выставляем ордер по цене 1.`);
                     await addOrder(order.hash_name, 1, 1, balance);
                 } else if (discountedPrice > currentPrice) {
-                    logToConsole(`Текущая цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
+                    logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
                     await addOrder(order.hash_name, 1, currentPrice + 0.01, balance);
                 } else {
                     console.log(`Unexpected condition for ${order.hash_name}. Discounted price: ${discountedPrice}, Current price: ${currentPrice}`);
