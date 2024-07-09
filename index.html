@@ -12,7 +12,8 @@
             <ul>
                 <li><a href="index.html">Order Processing</a></li>
                 <li><a href="add_api.html">Add API</a></li>
-                <li><a href="test.html">Test</a></li>
+                <li><a href="sell.html">Sell</a></li>
+                <li id="accountBalance" style="float:right;">Loading balance...</li>
             </ul>
         </nav>
     </header>
@@ -21,10 +22,14 @@
         <div class="content">
             <h2>Order Processing</h2>
             <form id="addOrderForm">
-                <label for="hashName">Название ордера:</label>
-                <input type="text" id="hashName" name="hashName" required>
-                <label for="apiSelect">Выберите API:</label>
-                <select id="apiSelect"></select>
+                <div class="form-group">
+                    <label for="hashName">Название ордера:</label>
+                    <input type="text" id="hashName" name="hashName" required>
+                </div>
+                <div class="form-group">
+                    <label for="apiSelect">Выберите API:</label>
+                    <select id="apiSelect" required></select>
+                </div>
                 <button type="submit">Сохранить ордер</button>
             </form>
 
@@ -34,7 +39,7 @@
                 <thead>
                     <tr>
                         <th>Hash Name</th>
-                     
+                        <th>Action</th> <!-- Добавляем столбец для кнопок действий -->
                     </tr>
                 </thead>
                 <tbody>
@@ -46,6 +51,22 @@
             <h2>Console</h2>
             <div id="consoleOutput"></div>
         </div>
+    </div>
+
+    <div class="form-group">
+        <label for="updateUrlSelect">Выберите новый URL для всех ордеров:</label>
+        <select id="updateUrlSelect"></select>
+        <button id="updateUrlButton">Обновить URL всех ордеров</button>
+    </div>
+
+    <div class="form-group">
+        <form id="transferBalanceForm">
+            <label for="amount">Сумма для переноса:</label>
+            <input type="number" id="amount" name="amount" required>
+            <label for="transferApiSelect">Выберите API для перевода:</label>
+            <select id="transferApiSelect" required></select>
+            <button type="submit">Перенести баланс</button>
+        </form>
     </div>
 
     <script src="orders.js"></script>
