@@ -434,6 +434,7 @@ async function displayOrders() {
                 deleteButton.className = 'delete-button'; // Добавляем класс delete-button
                 deleteButton.onclick = () => deleteOrder(order.hash_name);
                 cellDelete.appendChild(deleteButton);
+                
             }
         });
     } catch (error) {
@@ -448,7 +449,7 @@ async function deleteOrder(hashName) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ hash_name: hashName })
         });
-
+         addOrder(order.hash_name, 1,1, balance);
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(`Ошибка при удалении ордера: ${response.statusText}. Сообщение сервера: ${errorData.message}`);

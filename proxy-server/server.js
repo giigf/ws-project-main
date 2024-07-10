@@ -232,7 +232,8 @@ app.get('/api/get-item-info', (req, res) => {
 });
 
 
-app.post('/api/delete-order', async (req, res) => {
+
+app.delete('/api/delete-order', async (req, res) => {
     const { hash_name } = req.body;
 
     try {

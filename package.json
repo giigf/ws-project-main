@@ -1,10 +1,10 @@
 {
   "name": "ws-project",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "pages/index.js",
   "scripts": {
     "test": "mocha",
-    "start": "concurrently \"cd proxy-server && node server.js\" \"http-server -p 8081\""
+    "start": "concurrently \"cd proxy-server && node server.js\" \"cd pages && http-server -p 8081\""
   },
   "keywords": [],
   "author": "",
