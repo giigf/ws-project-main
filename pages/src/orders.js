@@ -188,9 +188,9 @@ async function startOrderProcessing() {
     processOrders();
 }
 
-async function processSingleOrderWithTimeout(order, prices, balance, timeout = 10000) {
+async function processSingleOrderWithTimeout(order, prices, timeout = 10000) {
     return Promise.race([
-        processSingleOrder(order, prices, balance),
+        processSingleOrder(order, prices),
         new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Время обработки ордера истекло')), timeout)
         )
@@ -212,18 +212,9 @@ async function processOrders() {
         const prices = await fetchPrices();
         logToConsole(`Получено ${prices.length} цен.`);
 
-        logToConsole('Получаем текущий баланс...');
-        let balance;
-        try {
-            balance = await fetchBalance();
-            logToConsole(`Текущий баланс: ${balance.money} ${balance.currency}`);
-        } catch (error) {
-            displayError(`Ошибка при получении баланса: ${error.message}`);
-            balance = { money: 0, currency: 'RUB' }; // Устанавливаем баланс в 0 при ошибке
-        }
 
         const promises = orders.map(order =>
-            processSingleOrderWithTimeout(order, prices, balance, 10000)
+            processSingleOrderWithTimeout(order, prices, 10000)
                 .catch(error => logToConsole(`Ошибка при обработке ордера на ${order.hash_name}: ${error.message}`, 'error'))
         );
 
@@ -285,7 +276,7 @@ async function fetchBalance() {
     }
 }
 
-async function processSingleOrder(order, prices, balance) {
+async function processSingleOrder(order, prices) {
     const itemData = await fetchItemPrice(order.hash_name);
     const priceInfo = prices.find(item => item.market_hash_name === order.hash_name);
     if (priceInfo) {
@@ -298,13 +289,13 @@ async function processSingleOrder(order, prices, balance) {
                 logToConsole(`Цена со скидкой 10%: ${discountedPrice}`);
                 if (discountedPrice === currentPrice) {
                     logToConsole(`Средняя цена ${discountedPrice} равна цене ордера ${currentPrice} для ${order.hash_name}`);
-                    await addOrder(order.hash_name, 1, 1, balance);
+                   addOrder(order.hash_name, 1, 1);
                 } else if (currentPrice > discountedPrice) {
                     logToConsole(`Текущая цена на ${order.hash_name} (${currentPrice}) выше средней цены (${discountedPrice}). Выставляем ордер по цене 1.`);
-                    await addOrder(order.hash_name, 1, 1, balance);
+                    addOrder(order.hash_name, 1, 1);
                 } else if (discountedPrice > currentPrice) {
                     logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
-                    await addOrder(order.hash_name, 1, currentPrice + 0.01, balance);
+                   addOrder(order.hash_name, 1, currentPrice + 0.01);
                 } else {
                     console.log(`Unexpected condition for ${order.hash_name}. Discounted price: ${discountedPrice}, Current price: ${currentPrice}`);
                     console.log(typeof discountedPrice, typeof currentPrice);
@@ -349,7 +340,7 @@ async function fetchOrderApiKey(hashName) {
     }
 }
 
-async function addOrder(hashName, count, price, balance) {
+async function addOrder(hashName, count, price) {
     const apiKey = await fetchOrderApiKey(hashName);
     if (!apiKey) {
         displayError(`API ключ для ${hashName} не найден.`);
@@ -444,12 +435,13 @@ async function displayOrders() {
 
 async function deleteOrder(hashName) {
     try {
+        addOrder(hashName, 1,1);
         const response = await fetch('http://localhost:8080/api/delete-order', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ hash_name: hashName })
         });
-         addOrder(order.hash_name, 1,1, balance);
+         
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(`Ошибка при удалении ордера: ${response.statusText}. Сообщение сервера: ${errorData.message}`);

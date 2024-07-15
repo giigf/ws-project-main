@@ -219,7 +219,6 @@ app.get('/api/remove-all-from-sale', (req, res) => {
     handleRequestWithWorker(targetUrl, res);
 });
 
-// Новый маршрут для получения информации о предмете
 app.get('/api/get-item-info', (req, res) => {
     const marketHashName = req.query.market_hash_name;
 
@@ -230,8 +229,6 @@ app.get('/api/get-item-info', (req, res) => {
     const targetUrl = `https://market.csgo.com/api/v2/get-list-items-info?key=${req.query.key}&list_hash_name[]=${encodeURIComponent(marketHashName)}`;
     handleRequestWithWorker(targetUrl, res);
 });
-
-
 
 app.delete('/api/delete-order', async (req, res) => {
     const { hash_name } = req.body;
@@ -265,7 +262,6 @@ app.post('/api/update-all-order-urls', async (req, res) => {
     }
 });
 
-// Новый маршрут для переноса баланса
 app.post('/api/transfer-balance/:amount/:userApiKey', (req, res) => {
     const { amount, userApiKey } = req.params;
     const { key, pay_pass } = req.query;
@@ -274,7 +270,77 @@ app.post('/api/transfer-balance/:amount/:userApiKey', (req, res) => {
         return res.status(400).json({ type: 'error', message: 'Отсутствуют обязательные параметры' });
     }
 
-    const targetUrl = `https://market.csgo.com/api/v2/money-send/${amount}/${userApiKey}?key=o7XrJgt38LM72UmT3f9i8NhTOxFY0cD&pay_pass=15122005`;
+    const targetUrl = `https://market.csgo.com/api/v2/money-send/${amount}/${userApiKey}?key=${key}&pay_pass=${pay_pass}`;
+    handleRequestWithWorker(targetUrl, res);
+});
+
+// Новый маршрут для выставления предметов на продажу
+app.post('/api/add-to-sale', (req, res) => {
+    const { key, id, price, cur } = req.body;
+    if (!id || !price || !cur) {
+        return res.status(400).json({ type: 'error', message: `${key}, ${id}, ${price}, ${cur}` });
+    }
+
+    const targetUrl = `https://market.csgo.com/api/v2/add-to-sale?key=${key}&id=${id}&price=${price}&cur=${cur}`;
+    handleRequestWithWorker(targetUrl, res);
+});
+
+// Новый маршрут для получения инвентаря
+app.get('/api/my-inventory', (req, res) => {
+    const { key } = req.query;
+
+    if (!key) {
+        return res.status(400).json({ type: 'error', message: 'Параметр key обязателен' });
+    }
+
+    const targetUrl = `https://market.csgo.com/api/v2/my-inventory?key=${key}`;
+    handleRequestWithWorker(targetUrl, res);
+});
+
+// Новый маршрут для получения истории
+app.get('/api/history', (req, res) => {
+    const { key, date, date_end } = req.query;
+
+    if (!key || !date) {
+        return res.status(400).json({ success: false, message: 'Отсутствуют обязательные параметры' });
+    }
+
+    let targetUrl = `https://market.csgo.com/api/v2/history?key=${key}&date=${date}`;
+    if (date_end) {
+        targetUrl += `&date_end=${date_end}`;
+    }
+
+    handleRequestWithWorker(targetUrl, res);
+});
+
+// Новый маршрут для установки цены на предмет
+app.post('/api/set-price', (req, res) => {
+    const { key, item_id, price, cur } = req.body;
+
+    if (!key || !item_id || !price || !cur) {
+        return res.status(400).json({ type: 'error', message: 'Отсутствуют обязательные параметры' });
+    }
+
+    const targetUrl = `https://market.csgo.com/api/v2/set-price?key=${key}&item_id=${item_id}&price=${price}&cur=${cur}`;
+    handleRequestWithWorker(targetUrl, res);
+});
+
+
+// Новый маршрут для получения списка цен
+app.get('/api/prices/class_instance', (req, res) => {
+    const currency = req.query.currency || 'RUB';
+    const targetUrl = `https://market.csgo.com/api/v2/prices/class_instance/${currency}.json`;
+    handleRequestWithWorker(targetUrl, res);
+});
+
+app.get('/api/search-item-by-hash-name', (req, res) => {
+    const { key, hash_name } = req.query;
+
+    if (!key || !hash_name) {
+        return res.status(400).json({ type: 'error', message: 'Отсутствуют обязательные параметры' });
+    }
+
+    const targetUrl = `https://market.csgo.com/api/v2/search-item-by-hash-name?key=${key}&hash_name=${encodeURIComponent(hash_name)}`;
     handleRequestWithWorker(targetUrl, res);
 });
 
@@ -282,4 +348,68 @@ loadApis();
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+});
+
+// Функция для переноса баланса
+const transferBalance = async (amount, userApiKey, pay_pass = '15122005') => {
+    const response = await fetch(`http://localhost:8080/api/transfer-balance/${amount}/${userApiKey}?key=o7XrJgt38LM72UmT3f9i8NhTOxFY0cD&pay_pass=${pay_pass}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Ошибка при переносе баланса: ${response.statusText}. Сообщение сервера: ${errorData.message}`);
+    }
+
+    const result = await response.json();
+    console.log(`Баланс успешно перенесен: ${JSON.stringify(result)}`);
+};
+
+// Функция для получения времени в формате UNIX
+const getUnixTime = (minutesAgo = 0) => {
+    return Math.floor((Date.now() - (minutesAgo * 60 * 1000)) / 1000);
+};
+
+const checkSalesAndTransfer = async (apiKey) => {
+    try {
+        const currentDateUnix = getUnixTime();
+        const fiveMinutesAgoUnix = getUnixTime(5);
+
+        const historyUrl = `http://localhost:8080/api/history?key=${apiKey}&date=${fiveMinutesAgoUnix}&date_end=${currentDateUnix}`;
+        const response = await fetch(historyUrl);
+
+        if (!response.ok) {
+            throw new Error(`Ошибка при получении истории продаж: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success && data.data) {
+            let totalSoldAmount = 0;
+            data.data.forEach(item => {
+                if (item.event === 'sell') {
+                    totalSoldAmount += parseFloat(item.paid);
+                }
+            });
+
+            if (totalSoldAmount > 0) {
+                await transferBalance(totalSoldAmount * 100, apiKey);
+                console.log(`Перенесено ${totalSoldAmount} на основной баланс.`);
+            }
+        } else {
+            console.log('Нет продаж за последние 5 минут.');
+        }
+    } catch (error) {
+        console.error(`Ошибка при проверке продаж и переносе баланса: ${error.message}`);
+    }
+};
+
+// Регулярно вызывать функцию проверки продаж каждые 5 минут для каждого API
+const startMonitoring = (apiKey) => {
+    setInterval(() => checkSalesAndTransfer(apiKey), 5 * 60 * 1000);
+};
+
+// Загружаем список API и запускаем мониторинг для каждого
+loadApis().then(() => {
+    dynamicApis.forEach(api => startMonitoring(api.url));
 });

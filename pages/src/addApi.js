@@ -1,8 +1,8 @@
 const saveApiUrl = 'http://localhost:8080/api/add';
 const apiListUrl = 'http://localhost:8080/api/list';
-const apiDeletetUrl = 'http://localhost:8080/api/delete/';
-const apiUpdatetUrl = 'http://localhost:8080/api/update/';
-
+const apiDeleteUrl = 'http://localhost:8080/api/delete/';
+const apiUpdateUrl = 'http://localhost:8080/api/update/';
+const setPayPasswordUrl = 'http://localhost:8080/api/set-pay-password';
 
 // Функция для загрузки списка API
 function loadApiList() {
@@ -21,6 +21,28 @@ function loadApiList() {
         .catch(error => {
             console.error('Error loading API list:', error);
         });
+}
+
+// Функция для установки платежного пароля
+function setPayPassword(apiKey) {
+    fetch(setPayPasswordUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ key: apiKey, new_password: '15122005' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Платежный пароль успешно установлен.');
+        } else {
+            console.error('Ошибка при установке платежного пароля:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при установке платежного пароля:', error);
+    });
 }
 
 // Функция для добавления нового API
@@ -43,6 +65,8 @@ document.getElementById('addApiForm').addEventListener('submit', function(event)
         } else {
             alert(`API "${data.name}" added successfully!`);
             loadApiList();
+            console.log(apiName);
+            setPayPassword(apiUrl); // Устанавливаем платежный пароль после добавления API
         }
     })
     .catch(error => {
@@ -52,7 +76,7 @@ document.getElementById('addApiForm').addEventListener('submit', function(event)
 
 // Функция для удаления API
 function deleteApi(apiName) {
-    fetch(`${apiDeletetUrl}${apiName}`, {
+    fetch(`${apiDeleteUrl}${apiName}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
@@ -71,7 +95,7 @@ function deleteApi(apiName) {
 
 // Функция для обновления API
 function updateApi(apiName, newApiUrl) {
-    fetch(`${apiUpdatetUrl}${apiName}`, {
+    fetch(`${apiUpdateUrl}${apiName}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
