@@ -317,7 +317,7 @@ async function processSingleOrder(order, prices, marketOrders) {
                 } else if (currentPrice > discountedPrice) {
                     logToConsole(`Текущая цена на ${order.hash_name} (${currentPrice}) выше средней цены (${discountedPrice}). Выставляем ордер по цене 1.`);
                     addOrder(order.hash_name, 1, 1);
-                } else if (discountedPrice > currentPrice && currentPrice > orderPrice) {
+                } else if (discountedPrice > currentPrice && currentPrice > orderPrice / 100) {
                     logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
                     addOrder(order.hash_name, 1, currentPrice + 0.01);
                 } else {
