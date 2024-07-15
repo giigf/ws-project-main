@@ -212,9 +212,12 @@ async function processOrders() {
         const prices = await fetchPrices();
         logToConsole(`Получено ${prices.length} цен.`);
 
+        logToConsole('Получаем ордера с рынка...');
+        const marketOrders = await fetchMarketOrders();
+        logToConsole(`Найдено ${marketOrders.length} ордеров на рынке.`);
 
         const promises = orders.map(order =>
-            processSingleOrderWithTimeout(order, prices, 10000)
+            processSingleOrderWithTimeout(order, prices, marketOrders, 10000)
                 .catch(error => logToConsole(`Ошибка при обработке ордера на ${order.hash_name}: ${error.message}`, 'error'))
         );
 
@@ -242,8 +245,27 @@ async function fetchOrders() {
     }
 }
 
+async function fetchMarketOrders() {
+    try {
+        const selectedApiUrl = document.getElementById('apiSelect').value;
+        const response = await fetch(`${ordersUrl}?key=${selectedApiUrl}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Ошибка при получении ордеров с рынка: ${response.status}, ${errorText}`);
+        }
+        const data = await response.json();
+        if (data.success) {
+            return data.orders;
+        } else {
+            throw new Error('Не удалось получить ордера с рынка');
+        }
+    } catch (error) {
+        displayError(`Ошибка при получении ордеров с рынка: ${error.message}`);
+        return [];
+    }
+}
+
 async function fetchPrices() {
-    
     try {
         const response = await fetch(pricesUrl);
         if (!response.ok) {
@@ -276,11 +298,15 @@ async function fetchBalance() {
     }
 }
 
-async function processSingleOrder(order, prices) {
+async function processSingleOrder(order, prices, marketOrders) {
     const itemData = await fetchItemPrice(order.hash_name);
     const priceInfo = prices.find(item => item.market_hash_name === order.hash_name);
-    if (priceInfo) {
+    const marketOrder = marketOrders.find(marketOrder => marketOrder.hash_name === order.hash_name);
+
+    if (priceInfo && marketOrder) {
         const currentPrice = parseFloat(priceInfo.price);
+        const orderPrice = parseFloat(marketOrder.price);
+
         if (itemData) {
             const averagePrice = itemData.average;
             const discountedPrice = parseFloat((averagePrice * 0.9).toFixed(2));
@@ -289,13 +315,13 @@ async function processSingleOrder(order, prices) {
                 logToConsole(`Цена со скидкой 10%: ${discountedPrice}`);
                 if (discountedPrice === currentPrice) {
                     logToConsole(`Средняя цена ${discountedPrice} равна цене ордера ${currentPrice} для ${order.hash_name}`);
-                   addOrder(order.hash_name, 1, 1);
+                    addOrder(order.hash_name, 1, 1);
                 } else if (currentPrice > discountedPrice) {
                     logToConsole(`Текущая цена на ${order.hash_name} (${currentPrice}) выше средней цены (${discountedPrice}). Выставляем ордер по цене 1.`);
                     addOrder(order.hash_name, 1, 1);
-                } else if (discountedPrice > currentPrice) {
+                } else if (discountedPrice > currentPrice && currentPrice > orderPrice) {
                     logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
-                   addOrder(order.hash_name, 1, currentPrice + 0.01);
+                    addOrder(order.hash_name, 1, currentPrice + 0.01);
                 } else {
                     console.log(`Unexpected condition for ${order.hash_name}. Discounted price: ${discountedPrice}, Current price: ${currentPrice}`);
                     console.log(typeof discountedPrice, typeof currentPrice);
@@ -306,7 +332,6 @@ async function processSingleOrder(order, prices) {
         }
     }
 }
-
 async function fetchItemPrice(marketHashName) {
     const selectedApiUrl = document.getElementById('apiSelect').value;
     const apiUrl = `http://localhost:8080/api/get-item-info?market_hash_name=${encodeURIComponent(marketHashName)}&key=${selectedApiUrl}`;
@@ -497,3 +522,6 @@ async function handleAddOrderForm() {
     form.reset();
     displayOrders();
 }
+
+orders.js 
+
