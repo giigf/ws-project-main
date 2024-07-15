@@ -188,9 +188,9 @@ async function startOrderProcessing() {
     processOrders();
 }
 
-async function processSingleOrderWithTimeout(order, prices, timeout = 10000) {
+async function processSingleOrderWithTimeout(order, prices, marketOrders, timeout = 30000) {
     return Promise.race([
-        processSingleOrder(order, prices),
+        processSingleOrder(order, prices , marketOrders),
         new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Время обработки ордера истекло')), timeout)
         )
@@ -212,14 +212,11 @@ async function processOrders() {
         const prices = await fetchPrices();
         logToConsole(`Получено ${prices.length} цен.`);
 
-        logToConsole('Получаем ордера с рынка...');
-        const marketOrders = await fetchMarketOrders();
-        logToConsole(`Найдено ${marketOrders.length} ордеров на рынке.`);
-
-        const promises = orders.map(order =>
-            processSingleOrderWithTimeout(order, prices, marketOrders, 10000)
-                .catch(error => logToConsole(`Ошибка при обработке ордера на ${order.hash_name}: ${error.message}`, 'error'))
-        );
+        const promises = orders.map(async order => {
+            const marketOrders = await fetchMarketOrders(order.url); // fetch market orders for the specific API
+            return processSingleOrderWithTimeout(order, prices, marketOrders, 10000)
+                .catch(error => logToConsole(`Ошибка при обработке ордера на ${order.hash_name}: ${error.message}`, 'error'));
+        });
 
         await Promise.allSettled(promises);
         logToConsole('Все ордера обработаны.');
@@ -245,16 +242,16 @@ async function fetchOrders() {
     }
 }
 
-async function fetchMarketOrders() {
+async function fetchMarketOrders(apiKey) {
     try {
-        const selectedApiUrl = document.getElementById('apiSelect').value;
-        const response = await fetch(`${ordersUrl}?key=${selectedApiUrl}`);
+        const response = await fetch(`${ordersUrl}?key=${apiKey}`);
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`Ошибка при получении ордеров с рынка: ${response.status}, ${errorText}`);
         }
         const data = await response.json();
         if (data.success) {
+            console.log(data);
             return data.orders;
         } else {
             throw new Error('Не удалось получить ордера с рынка');
@@ -303,14 +300,15 @@ async function processSingleOrder(order, prices, marketOrders) {
     const priceInfo = prices.find(item => item.market_hash_name === order.hash_name);
     const marketOrder = marketOrders.find(marketOrder => marketOrder.hash_name === order.hash_name);
 
-    if (priceInfo && marketOrder) {
+    if (priceInfo) {
         const currentPrice = parseFloat(priceInfo.price);
-        const orderPrice = parseFloat(marketOrder.price);
+      
 
         if (itemData) {
             const averagePrice = itemData.average;
             const discountedPrice = parseFloat((averagePrice * 0.9).toFixed(2));
-            if (averagePrice) {
+            if (averagePrice && marketOrder) {
+                const orderPrice = parseFloat(marketOrder.price);
                 logToConsole(`Средняя цена для ${order.hash_name}: ${averagePrice}`);
                 logToConsole(`Цена со скидкой 10%: ${discountedPrice}`);
                 if (discountedPrice === currentPrice) {
@@ -323,15 +321,21 @@ async function processSingleOrder(order, prices, marketOrders) {
                     logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
                     addOrder(order.hash_name, 1, currentPrice + 0.01);
                 } else {
+                   
                     console.log(`Unexpected condition for ${order.hash_name}. Discounted price: ${discountedPrice}, Current price: ${currentPrice}`);
                     console.log(typeof discountedPrice, typeof currentPrice);
                 }
+            }else {
+                if (discountedPrice > currentPrice) {
+                    logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
+                    addOrder(order.hash_name, 1, currentPrice + 0.01);
+                }
             }
-        } else {
-            logToConsole(`Информация о предмете ${order.hash_name} не найдена.`);
-        }
-    }
+        } 
+    }   
 }
+
+
 async function fetchItemPrice(marketHashName) {
     const selectedApiUrl = document.getElementById('apiSelect').value;
     const apiUrl = `http://localhost:8080/api/get-item-info?market_hash_name=${encodeURIComponent(marketHashName)}&key=${selectedApiUrl}`;

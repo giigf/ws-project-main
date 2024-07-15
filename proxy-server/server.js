@@ -153,7 +153,7 @@ app.post('/api/save-items', async (req, res) => {
 });
 
 app.get('/api/get-orders', (req, res) => {
-    const page = req.query.page || 0;
+    const page = 0;
     const targetUrl = `https://market.csgo.com/api/v2/get-orders?key=${req.query.key}&page=${page}`;
     handleRequestWithWorker(targetUrl, res);
 });
