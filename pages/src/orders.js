@@ -188,7 +188,7 @@ async function startOrderProcessing() {
     processOrders();
 }
 
-async function processSingleOrderWithTimeout(order, prices, marketOrders, timeout = 30000) {
+async function processSingleOrderWithTimeout(order, prices, marketOrders, timeout = 10000) {
     return Promise.race([
         processSingleOrder(order, prices , marketOrders),
         new Promise((_, reject) =>
@@ -224,7 +224,7 @@ async function processOrders() {
         displayError(`Ошибка при обработке ордеров: ${error.message}`);
     }
 
-    setTimeout(processOrders, 3000);
+    setTimeout(processOrders, 100);
 }
 
 async function fetchOrders() {
@@ -319,10 +319,10 @@ async function processSingleOrder(order, prices, marketOrders) {
                     addOrder(order.hash_name, 1, 1);
                 } else if (discountedPrice > currentPrice && currentPrice > orderPrice / 100) {
                     logToConsole(`Средняя цена ${discountedPrice} больше ${currentPrice} для ${order.hash_name}`);
-                    addOrder(order.hash_name, 1, currentPrice + 0.01);
+                    addOrder(order.hash_name, 5, currentPrice + 0.01);
                 } else {
                    
-                    console.log(`Unexpected condition for ${order.hash_name}. Discounted price: ${discountedPrice}, Current price: ${currentPrice}`);
+                    console.log(`Unexpected condition for ${order.hash_name}. Discounted price: ${discountedPrice}, Current price: ${currentPrice},orderPrice: ${orderPrice / 100} `);
                     console.log(typeof discountedPrice, typeof currentPrice);
                 }
             }else {

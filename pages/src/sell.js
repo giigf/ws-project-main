@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             if (data.success && data.data.length > 0) {
-                return data.data[0].price;
+                return data.data[2].price;
             } else {
                 throw new Error('Не удалось получить минимальную цену');
             }
@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkSalesAndTransfer(apiKey) {
         try {
             const currentDateUnix = getUnixTime();
-            const fiveMinutesAgoUnix = getUnixTime(5);
+            const fiveMinutesAgoUnix = getUnixTime(1);
 
             const historyUrl = `http://localhost:8080/api/history?key=${apiKey}&date=${fiveMinutesAgoUnix}&date_end=${currentDateUnix}`;
             const response = await fetch(historyUrl);
