@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sell Items</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="index.html">Order Processing</a></li>
+                <li><a href="add_api.html">Add API</a></li>
+                <li><a href="sell.html">Sell</a></li>
+                <li id="accountBalance" style="float:right;">Loading balance...</li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="content">
+            <h2>Sell Items</h2>
+            <div class="form-group">
+                <label for="apiSelect">Select API:</label>
+                <select id="apiSelect" required></select>
+            </div>
+
+            <div id="balance">Loading balance...</div>
+            <div id="consoleOutput"></div>
+        </div>
+    </div>
+
+    <script src="src/sell.js"></script>
+</body>
+</html>
